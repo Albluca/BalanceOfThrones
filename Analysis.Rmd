@@ -1,0 +1,189 @@
+---
+title: "Balance of Thrones"
+author: "Dianbo Liu and Luca Albergante"
+date: "04/08/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+
+```{r libraries}
+library(igraph)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(pheatmap)
+```
+
+## Loading networks and creating accessory structures
+
+Loading networks. Set `BaseDir` as appropriate
+
+```{r load network}
+
+AllNet.Plus <- list()
+
+BaseDir <- ""
+
+NetNames <- list.files(path = paste0(BaseDir, "Networks"), full.names = TRUE)
+
+for(file in NetNames){
+  print(paste("Loading", file))
+  AllNet.Plus[[length(AllNet.Plus)+1]] <- igraph::read.graph(file = file, format = "graphml")
+  names(AllNet.Plus)[length(AllNet.Plus)] <- strsplit(file, split = "[./]")[[1]][2]
+}
+
+EPNameSeason <- strsplit(x = names(AllNet.Plus), split = "E") %>%
+  lapply(., "[[", 1) %>%
+  unlist %>%
+  data.frame(Season = .)
+rownames(EPNameSeason) <- names(AllNet.Plus)
+```
+
+## Figure 1
+
+```{r example network}
+tNet <- (degree(AllNet.Plus[["S6E10"]]) > 0) %>%
+  which %>%
+  induced.subgraph(AllNet.Plus[["S6E10"]], .)
+
+plot(tNet,
+     edge.width=3,
+     main='',
+     layout=layout.fruchterman.reingold,
+     vertex.size=15+degree(tNet)*2
+)
+```
+
+## Figure 2 (Degree)
+
+```{r degree by episode}
+
+AllDeg <- sapply(AllNet.Plus, function(x){
+  degree(x)[order(names(degree(x)))]
+})
+
+pheatmap::pheatmap(AllDeg, cluster_cols = FALSE, main = "Degree", annotation_col = EPNameSeason)
+
+pheatmap::pheatmap(cor(t(AllDeg), method = "spe"), main = "Degree correlation (Houses)")
+
+pheatmap::pheatmap(cor(AllDeg, method = "spe"), main = "Degree correlation (Episodes)",
+                   annotation_row = EPNameSeason, cluster_cols = FALSE)
+
+```
+
+
+
+## Figure 2 (Betweenness)
+
+```{r betweenness by episode}
+
+AllBetw <- sapply(AllNet.Plus, function(x){
+    betweenness(x)[order(names(betweenness(x)))]
+  })
+
+pheatmap::pheatmap(AllBetw, cluster_cols = FALSE, main = "Betweenness Centrality", annotation_col = EPNameSeason)
+
+AllBetw.RF <- AllBetw[sapply(apply(AllBetw, 1, unique), length)>1, ]
+AllBetw.CF <- AllBetw[, sapply(apply(AllBetw, 2, unique), length)>1]
+
+pheatmap::pheatmap(cor(t(AllBetw.RF), method = "spe"), main = "Betweenness Centrality correlation (Houses)")
+
+pheatmap::pheatmap(cor(AllBetw.CF, method = "spe"), main = "Betweenness Centrality correlation (Episodes)",
+                   annotation_row = EPNameSeason, cluster_cols = FALSE)
+```
+
+
+
+## Figure 2 (Assortativity)
+
+```{r assortativity by episode}
+AllAssDeg <- sapply(AllNet.Plus, function(x){
+  assortativity(x, types1 = degree(x), directed = F)
+  })
+
+AllAssCen <- sapply(AllNet.Plus, function(x){
+  assortativity(x, types1 = closeness(x), directed = F)
+  })
+
+p <- ggplot(data = data.frame(Ass = AllAssDeg,
+                              Episode = names(AllAssDeg),
+                              Season = EPNameSeason),
+            mapping = aes(x=Episode, y = Ass, color = Season)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title="Assortativity by degree", x="Episode", y="Score")
+
+print(p)
+
+
+
+p <- ggplot(data = data.frame(Ass = AllAssCen,
+                              Episode = names(AllAssDeg),
+                              Season = EPNameSeason),
+            mapping = aes(x=Episode, y = Ass, color = Season)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title="Assortativity by closeness", x="Episode", y="Score")
+
+print(p)
+
+```
+
+
+
+
+## Figure 3 (Assortativity)
+
+```{r assortativity by episode}
+AllAssDeg <- sapply(AllNet.Plus, function(x){
+  assortativity(x, types1 = degree(x), directed = F)
+  })
+
+AllAssCen <- sapply(AllNet.Plus, function(x){
+  assortativity(x, types1 = closeness(x), directed = F)
+  })
+
+p <- ggplot(data = data.frame(Ass = AllAssDeg,
+                              Episode = names(AllAssDeg),
+                              Season = EPNameSeason),
+            mapping = aes(x=Episode, y = Ass, color = Season)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title="Assortativity by degree", x="Episode", y="Score")
+
+print(p)
+
+
+
+p <- ggplot(data = data.frame(Ass = AllAssCen,
+                              Episode = names(AllAssDeg),
+                              Season = EPNameSeason),
+            mapping = aes(x=Episode, y = Ass, color = Season)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) +
+  labs(title="Assortativity by closeness", x="Episode", y="Score")
+
+print(p)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
